@@ -122,22 +122,32 @@ func changeCompany(c echo.Context) error {
 	companyID := uint(claims["company_id"].(float64))
 
 	var input struct {
-		Name     string `json:"name"`
-		Tax      string `json:"tax"`
-		Dividend string `json:"dividend"`
+		Name     *string `json:"name"`
+		Tax      *string `json:"tax"`
+		Dividend *string `json:"dividend"`
+	}
+
+	if err := c.Bind(&input); err != nil {
+		return c.JSON(400, map[string]string{"error": "Invalid request data"})
 	}
 
 	var company models.Company
 	if err := db.DB.First(&company, companyID).Error; err != nil {
 		return c.JSON(400, map[string]string{"error": "Company not found"})
 	}
-	company.Name = input.Name
-	company.Tax = input.Tax
-	company.Dividend = input.Dividend
-	err := db.DB.Save(&company)
-	if err != nil {
+	if input.Name != nil && *input.Name != "" {
+		company.Name = *input.Name
+	}
+	if input.Tax != nil && *input.Tax != "" {
+		company.Tax = *input.Tax
+	}
+	if input.Dividend != nil && *input.Dividend != "" {
+		company.Dividend = *input.Dividend
+	}
+	if err := db.DB.Save(&company).Error; err != nil {
 		return c.JSON(400, map[string]string{"error": "Failed to update company"})
 	}
+
 	return c.JSON(200, company)
 }
 
