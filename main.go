@@ -240,19 +240,17 @@ func getExpenses(c echo.Context) error {
 }
 
 func GetCompany(c echo.Context) error {
-	// Get user ID from the JWT token
+
 	userToken := c.Get("user").(*jwt.Token)
 	claims := userToken.Claims.(jwt.MapClaims)
 	userID := uint(claims["id"].(float64)) // Convert float64 to uint
 
-	// Fetch the user along with their company details
 	var user models.User
 	err := db.DB.Preload("Company").Where("id = ?", userID).First(&user).Error
 	if err != nil {
 		return c.JSON(400, map[string]string{"error": "User or company not found"})
 	}
 
-	// Return company details
 	return c.JSON(200, user.Company)
 }
 
@@ -409,45 +407,38 @@ func Register(c echo.Context) error {
 		} `json:"company"`
 	}
 
-	// Bind request JSON to input struct
 	if err := c.Bind(&input); err != nil {
 		return c.JSON(400, map[string]string{"error": "Invalid request data"})
 	}
 
-	// Create new company in the database
 	newCompany := models.Company{
 		Name:     input.Company.Name,
 		Tax:      input.Company.Tax,
 		Dividend: input.Company.Dividend,
 	}
 
-	// Save company to database
 	err := db.DB.Create(&newCompany).Error
 	if err != nil {
 		return c.JSON(400, map[string]string{"error": "Failed to create company"})
 	}
 
-	// Hash the user's password
 	hash, err := HashPassword(input.Password)
 	if err != nil {
 		return c.JSON(400, map[string]string{"error": "Password hashing failed"})
 	}
 
-	// Create user and assign the company ID
 	user := models.User{
 		Name:         input.Name,
 		Email:        input.Email,
 		PasswordHash: hash,
-		CompanyID:    newCompany.ID, // ✅ Set CompanyID properly
+		CompanyID:    newCompany.ID,
 	}
 
-	// Save user to database
 	err = db.DB.Create(&user).Error
 	if err != nil {
 		return c.JSON(400, map[string]string{"error": "Failed to create user"})
 	}
 
-	// Return successful response
 	return c.JSON(200, user)
 }
 
@@ -476,8 +467,8 @@ func Login(c echo.Context) error {
 		"id":         user.ID,
 		"name":       user.Name,
 		"email":      user.Email,
-		"company_id": user.CompanyID,                        // ✅ Include company ID in token
-		"exp":        time.Now().Add(time.Hour * 24).Unix(), // Token expires in 24 hours
+		"company_id": user.CompanyID,
+		"exp":        time.Now().Add(time.Hour * 24).Unix(),
 	})
 
 	tokenString, err := token.SignedString([]byte(SECRET))
